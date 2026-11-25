@@ -1,0 +1,228 @@
+{
+  "entities": {
+    "FeedPost": {
+      "title": "FeedPost",
+      "description": "An announcement, showcase, contest winner, behind-the-scenes, or rank promotion post published to the community feed.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 200 },
+        "content": { "type": "string", "maxLength": 5000 },
+        "category": { "type": "string", "enum": ["announcement", "contest_winner", "showcase", "behind_the_scenes", "promotion"] },
+        "authorName": { "type": "string", "maxLength": 100 },
+        "authorRole": { "type": "string", "maxLength": 100 },
+        "authorAvatar": { "type": "string", "maxLength": 1000 },
+        "authorUid": { "type": "string", "maxLength": 128 },
+        "publishedAt": { "type": "string", "maxLength": 100 },
+        "imageUrl": { "type": "string", "maxLength": 2000 },
+        "tags": { "type": "array", "description": "Array of topic tags" },
+        "applauseCount": { "type": "number" },
+        "featuredPromotion": { "type": "object", "description": "Optional promotion details" },
+        "featuredPksWinner": { "type": "object", "description": "Optional contest winner credit" },
+        "createdAt": { "type": "string", "description": "ISO timestamp or server time" },
+        "updatedAt": { "type": "string", "description": "ISO timestamp or server time" }
+      },
+      "required": ["title", "content", "category", "authorName"]
+    },
+    "EventAssignment": {
+      "title": "EventAssignment",
+      "description": "An official FPC production shoot, workshop, contest, or coverage call sheet.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 200 },
+        "type": { "type": "string", "enum": ["shoot", "contest", "workshop", "meeting", "coverage"] },
+        "date": { "type": "string", "maxLength": 50 },
+        "time": { "type": "string", "maxLength": 100 },
+        "location": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 4000 },
+        "bannerUrl": { "type": "string", "maxLength": 2000 },
+        "assignedCrewIds": { "type": "array" },
+        "volunteerCrewIds": { "type": "array" },
+        "crewSlots": { "type": "array", "description": "Specific crew role slots, quotas, assigned members, volunteers, and role-specific PKS codes" },
+        "maxCrew": { "type": "number" },
+        "status": { "type": "string", "enum": ["upcoming", "ongoing", "completed"] },
+        "isContest": { "type": "boolean" },
+        "contestDeadline": { "type": "string", "maxLength": 100 },
+        "contestPrize": { "type": "string", "maxLength": 500 },
+        "submittedEntriesCount": { "type": "number" },
+        "eligibleCodes": { "type": "array" },
+        "projectHeadId": { "type": "string", "maxLength": 128 },
+        "projectHeadName": { "type": "string", "maxLength": 100 },
+        "completedAt": { "type": "string", "maxLength": 100 },
+        "creditsApproved": { "type": "boolean" },
+        "creditedMemberIds": { "type": "array" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["title", "type", "date", "status"]
+    },
+    "MLogEntry": {
+      "title": "MLogEntry",
+      "description": "A verified or pending M.Log ledger entry recording creative outputs, participation, responsibility, recognition, or special distinction.",
+      "type": "object",
+      "properties": {
+        "memberId": { "type": "string", "maxLength": 128 },
+        "memberName": { "type": "string", "maxLength": 100 },
+        "memberAvatar": { "type": "string", "maxLength": 1000 },
+        "eventTitle": { "type": "string", "maxLength": 200 },
+        "eventId": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 50 },
+        "roleOrAward": { "type": "string", "maxLength": 150 },
+        "codes": { "type": "array" },
+        "pillarPoints": { "type": "object" },
+        "totalPoints": { "type": "number" },
+        "remarks": { "type": "string", "maxLength": 2000 },
+        "proofUrl": { "type": "string", "maxLength": 2000 },
+        "status": { "type": "string", "enum": ["verified", "pending", "rejected"] },
+        "verifiedBy": { "type": "string", "maxLength": 150 },
+        "verifiedAt": { "type": "string", "maxLength": 100 },
+        "submittedAt": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["memberId", "memberName", "eventTitle", "codes", "totalPoints", "status"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Member profile including dual status: creative rank standing, concurrent officer post, and project head assignments.",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string", "maxLength": 50 },
+        "password": { "type": "string", "maxLength": 100 },
+        "fullName": { "type": "string", "maxLength": 100 },
+        "nickname": { "type": "string", "maxLength": 50 },
+        "avatarUrl": { "type": "string", "maxLength": 1000 },
+        "role": { "type": "string", "maxLength": 50 },
+        "officerRole": { "type": "string", "maxLength": 50 },
+        "projectHeadRoles": { "type": "array" },
+        "isOfficer": { "type": "boolean" },
+        "creativeTags": { "type": "array" },
+        "gradeSection": { "type": "string", "maxLength": 100 },
+        "joinedDate": { "type": "string", "maxLength": 50 },
+        "registrationDate": { "type": "string", "maxLength": 50 },
+        "birthdate": { "type": "string", "maxLength": 50 },
+        "batch": { "type": "string", "maxLength": 50 },
+        "creativeGroup": { "type": "string", "enum": ["photography", "design", "videography"], "maxLength": 50 },
+        "bio": { "type": "string", "maxLength": 1000 },
+        "email": { "type": "string", "maxLength": 200 },
+        "uid": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["username", "fullName", "role"]
+    },
+    "ContestSubmission": {
+      "title": "ContestSubmission",
+      "description": "A student submission for an active creative contest.",
+      "type": "object",
+      "properties": {
+        "eventId": { "type": "string", "maxLength": 128 },
+        "eventTitle": { "type": "string", "maxLength": 200 },
+        "memberId": { "type": "string", "maxLength": 128 },
+        "memberName": { "type": "string", "maxLength": 100 },
+        "memberAvatar": { "type": "string", "maxLength": 1000 },
+        "title": { "type": "string", "maxLength": 200 },
+        "caption": { "type": "string", "maxLength": 2000 },
+        "imageUrl": { "type": "string", "maxLength": 2000 },
+        "submittedAt": { "type": "string", "maxLength": 100 },
+        "status": { "type": "string", "enum": ["pending", "approved", "featured", "rejected"] },
+        "awardWon": { "type": "string", "maxLength": 150 }
+      },
+      "required": ["eventId", "memberId", "title", "imageUrl", "status"]
+    },
+    "SystemSettings": {
+      "title": "SystemSettings",
+      "description": "Global organization settings, academic year, and banner announcements.",
+      "type": "object",
+      "properties": {
+        "appName": { "type": "string", "maxLength": 100 },
+        "schoolName": { "type": "string", "maxLength": 200 },
+        "orgTagline": { "type": "string", "maxLength": 300 },
+        "logoUrl": { "type": "string", "maxLength": 2000 },
+        "academicYear": { "type": "string", "maxLength": 50 },
+        "announcementBanner": { "type": "string", "maxLength": 1000 },
+        "bannerActive": { "type": "boolean" },
+        "mLogSubmissionOpen": { "type": "boolean" },
+        "inviteRegistrationActive": { "type": "boolean" },
+        "inviteCode": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["appName", "schoolName"]
+    },
+    "PendingRegistration": {
+      "title": "PendingRegistration",
+      "description": "A membership self-registration submitted via invite link awaiting administrator verification and PKS baseline assignment.",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string", "maxLength": 100 },
+        "nickname": { "type": "string", "maxLength": 50 },
+        "username": { "type": "string", "maxLength": 50 },
+        "password": { "type": "string", "maxLength": 100 },
+        "gradeSection": { "type": "string", "maxLength": 100 },
+        "batch": { "type": "string", "maxLength": 50 },
+        "registrationDate": { "type": "string", "maxLength": 50 },
+        "birthdate": { "type": "string", "maxLength": 50 },
+        "creativeGroup": { "type": "string", "maxLength": 50 },
+        "creativeTags": { "type": "array" },
+        "bio": { "type": "string", "maxLength": 1000 },
+        "avatarUrl": { "type": "string", "maxLength": 1000 },
+        "email": { "type": "string", "maxLength": 200 },
+        "requestedAt": { "type": "string", "maxLength": 100 },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "rejectionReason": { "type": "string", "maxLength": 500 },
+        "reviewedBy": { "type": "string", "maxLength": 100 },
+        "reviewedAt": { "type": "string", "maxLength": 100 },
+        "initialPksGranted": { "type": "number" }
+      },
+      "required": ["fullName", "username", "status"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A real-time cross-device alert for new events, crew role assignments, or system notices.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "message": { "type": "string", "maxLength": 1000 },
+        "eventId": { "type": "string", "maxLength": 128 },
+        "type": { "type": "string", "enum": ["new_event", "event_reminder", "role_assigned", "system"] },
+        "createdAt": { "type": "string", "maxLength": 100 },
+        "read": { "type": "boolean" },
+        "readBy": { "type": "array", "description": "Member IDs who have marked this notification as read" },
+        "dismissedBy": { "type": "array", "description": "Member IDs who have cleared this notification" },
+        "bannerUrl": { "type": "string", "maxLength": 2000 },
+        "eventType": { "type": "string", "enum": ["shoot", "contest", "workshop", "meeting", "coverage"] },
+        "roleTitle": { "type": "string", "maxLength": 150 }
+      },
+      "required": ["userId", "title", "message", "type", "createdAt", "read"]
+    }
+  },
+  "firestore": {
+    "/feed_posts/{postId}": {
+      "schema": { "$ref": "#/entities/FeedPost" },
+      "description": "Collection of all community feed posts, announcements, and rank promotions."
+    },
+    "/events/{eventId}": {
+      "schema": { "$ref": "#/entities/EventAssignment" },
+      "description": "Collection of production shoots, contests, call sheets, and workshops."
+    },
+    "/mlog_entries/{entryId}": {
+      "schema": { "$ref": "#/entities/MLogEntry" },
+      "description": "Collection of verified and pending 4-pillar M.Log ledger records."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Collection of FPC member and officer profiles with dual status."
+    },
+    "/contest_submissions/{submissionId}": {
+      "schema": { "$ref": "#/entities/ContestSubmission" },
+      "description": "Collection of student contest submissions and photography tilt entries."
+    },
+    "/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/SystemSettings" },
+      "description": "Global institutional configuration and broadcast banner settings."
+    },
+    "/pending_registrations/{registrationId}": {
+      "schema": { "$ref": "#/entities/PendingRegistration" },
+      "description": "Collection of applicant self-registrations via invite link awaiting admin review and baseline PKS allocation."
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "Collection of real-time cross-device event, crew role assignment, and admin alerts."
+    }
+  }
+}

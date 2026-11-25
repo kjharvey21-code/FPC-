@@ -1,0 +1,8 @@
+{
+  "name": "FPC Hub",
+  "description": "Official member hub, production credit ledger, and creative portfolio system for Focus Point Club.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

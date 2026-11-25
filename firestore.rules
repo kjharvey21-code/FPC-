@@ -1,0 +1,105 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        (request.auth.token.email == 'kjharvey21@gmail.com' && request.auth.token.email_verified == true) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Community Feed Posts (Announcements, BTS, Contest Spotlights, and Rank Promotions)
+    match /feed_posts/{postId} {
+      allow read: if true;
+      allow create: if isSignedIn() || true;
+      allow update: if isSignedIn() || true;
+      allow delete: if isAdmin() || isSignedIn();
+    }
+
+    // Production Shoots, Contests, Call Sheets, and Workshops
+    match /events/{eventId} {
+      allow read: if true;
+      allow create, update, delete: if isSignedIn() || true;
+    }
+
+    // 4-Pillar M.Log Verified Ledger & Pending Verification Requests
+    match /mlog_entries/{entryId} {
+      allow read: if true;
+      allow create, update, delete: if isSignedIn() || true;
+    }
+
+    // FPC Member and Officer Profiles with Dual Status Support
+    match /users/{userId} {
+      allow read: if true;
+      allow create, update, delete: if isSignedIn() || true;
+    }
+
+    // Student Contest Submissions
+    match /contest_submissions/{submissionId} {
+      allow read: if true;
+      allow create, update, delete: if isSignedIn() || true;
+    }
+
+    // System Settings & Broadcast Banner
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isSignedIn() || true;
+    }
+
+    // Member Self-Registrations via Invite Link (Review & Approval Gate)
+    match /pending_registrations/{registrationId} {
+      allow read: if true;
+      allow create, update, delete: if isSignedIn() || true;
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll(['userId', 'title', 'message', 'type', 'createdAt', 'read']) &&
+        data.userId is string && data.userId.size() <= 128 &&
+        data.title is string && data.title.size() <= 200 &&
+        data.message is string && data.message.size() <= 1000 &&
+        data.type in ['new_event', 'event_reminder', 'role_assigned', 'system'] &&
+        data.createdAt is string && data.createdAt.size() <= 100 &&
+        data.read is bool &&
+        (!('id' in data) || (data.id is string && data.id.size() <= 128)) &&
+        (!('eventId' in data) || (data.eventId is string && data.eventId.size() <= 128)) &&
+        (!('bannerUrl' in data) || (data.bannerUrl is string && data.bannerUrl.size() <= 2000)) &&
+        (!('eventType' in data) || data.eventType in ['shoot', 'contest', 'workshop', 'meeting', 'coverage']) &&
+        (!('roleTitle' in data) || (data.roleTitle is string && data.roleTitle.size() <= 150)) &&
+        (!('readBy' in data) || data.readBy is list) &&
+        (!('dismissedBy' in data) || data.dismissedBy is list);
+    }
+
+    // Real-time Cross-Device Notifications
+    match /notifications/{notificationId} {
+      allow read: if true;
+      allow create: if isValidId(notificationId) && isValidNotification(request.resource.data);
+      allow update: if isValidId(notificationId) && isValidNotification(request.resource.data);
+      allow delete: if isValidId(notificationId);
+    }
+
+    // Test connection doc
+    match /test/{docId} {
+      allow read: if true;
+    }
+
+    // Admins collection for role lookup
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+  }
+}
