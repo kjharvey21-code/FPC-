@@ -858,27 +858,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const user = result.user;
       showToast(`Signed in as ${user.displayName || user.email}`, 'success');
     } catch (error: any) {
-      console.warn('Google Sign-in popup notice:', error);
-      const errorCode = error?.code || '';
-      // If popup is blocked by iframe security or domain unauthorized in Firebase Console, fallback gracefully
+      console.warn('Google Sign-in popup error:', error);
+      const errorCode = String(error?.code || '');
       if (
         errorCode === 'auth/unauthorized-domain' ||
         errorCode === 'auth/popup-blocked' ||
         errorCode === 'auth/cancelled-popup-request' ||
         errorCode === 'auth/operation-not-allowed' ||
-        String(errorCode).includes('popup')
+        errorCode.includes('popup')
       ) {
-        // Fallback to verified administrator profile in preview
-        const adminUser =
-          allUsers.find((u) => u.email === 'kjharvey21@gmail.com' || u.role === 'SuperAdmin') ||
-          allUsers[0];
-        if (adminUser) {
-          setCurrentUserId(adminUser.id);
-          showToast(`Logged in as verified Google Administrator (${adminUser.fullName})`, 'success');
-          return;
-        }
+        showToast(
+          'Google Sign-In is unavailable or was blocked. Please sign in with your username and password.',
+          'error'
+        );
+        return;
       }
-      showToast(error?.message || 'Google Sign-in was cancelled or encountered an error.', 'error');
+      showToast(
+        'Google Sign-In failed or was cancelled. Please sign in with your username and password.',
+        'error'
+      );
     }
   };
 
@@ -938,9 +936,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     if (matchedUser) {
       const storedPw = (matchedUser.password || '').trim();
-      const isPasswordValid =
-        cleanPw === 'fpc2026' ||
-        (storedPw !== '' && storedPw === cleanPw);
+      const isPasswordValid = storedPw !== '' && storedPw === cleanPw;
 
       if (isPasswordValid) {
         setCurrentUserId(matchedUser.id);
@@ -952,7 +948,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return {
           success: false,
           message:
-            'This account is linked to Google Sign-In and has no password set. Click "Continue with Google" below or ask an admin to set a password.',
+            'This account does not have a password set yet. Please ask an administrator to set a password for your account.',
         };
       }
 

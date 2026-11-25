@@ -27,7 +27,7 @@ import { getTodayIsoDate, isValidBirthdate } from '../utils/dateUtils';
 const BATCH_PRESETS = ['Batch Uno', 'Batch Dos', 'Batch Tres', 'Batch Sony'];
 
 export const AuthScreen: React.FC = () => {
-  const { login, loginWithGoogle, submitRegistration, systemSettings } = useApp();
+  const { login, submitRegistration, systemSettings } = useApp();
 
   // Mode: Sign in or Self-Registration
   const [mode, setMode] = useState<'signin' | 'register'>(() => {
@@ -285,22 +285,6 @@ export const AuthScreen: React.FC = () => {
                 <ArrowRight className="w-4 h-4" />
               </button>
             </form>
-
-            <div className="mt-4">
-              <div className="relative flex py-2 items-center">
-                <div className="flex-grow border-t border-slate-100" />
-                <span className="shrink mx-3 text-[11px] font-medium text-slate-400">or</span>
-                <div className="flex-grow border-t border-slate-100" />
-              </div>
-              <button
-                type="button"
-                onClick={() => loginWithGoogle()}
-                className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl border border-slate-200 transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-2xs active:scale-[0.98]"
-              >
-                <ShieldCheck className="w-4 h-4 text-indigo-600" />
-                <span>Continue with Google</span>
-              </button>
-            </div>
 
             {/* Invite Registration Link / Switcher */}
             <div className="mt-6 pt-5 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-500">

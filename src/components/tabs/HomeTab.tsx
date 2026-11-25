@@ -19,12 +19,14 @@ import {
   Star,
   UserPlus,
   Check,
+  CalendarPlus,
 } from 'lucide-react';
 import { EventDetailsModal } from '../modals/EventDetailsModal';
 import { SubmitContestModal } from '../modals/SubmitContestModal';
 import { EditEventModal } from '../modals/EditEventModal';
 import { ParticipantCreditsModal } from '../modals/ParticipantCreditsModal';
-import { canManageEvent, isEventProjectHead, getEventManagementBadge } from '../../utils/permissions';
+import { PublishEventModal } from '../modals/PublishEventModal';
+import { canManageEvent, isEventProjectHead, getEventManagementBadge, hasAdminAccess } from '../../utils/permissions';
 
 export const HomeTab: React.FC = () => {
   const {
@@ -43,8 +45,11 @@ export const HomeTab: React.FC = () => {
   const [contestSubmitEvent, setContestSubmitEvent] = useState<EventAssignment | null>(null);
   const [editingEventModal, setEditingEventModal] = useState<EventAssignment | null>(null);
   const [creditingEventModal, setCreditingEventModal] = useState<EventAssignment | null>(null);
+  const [isPublishEventOpen, setIsPublishEventOpen] = useState(false);
 
   if (!currentUser) return null;
+
+  const userHasAdminAccess = hasAdminAccess(currentUser);
 
   const totalPks = getMemberPks(currentUser.id);
   const rank = getMemberRank(currentUser.id);
@@ -457,8 +462,8 @@ export const HomeTab: React.FC = () => {
           </button>
         </div>
 
-        {/* Active vs Completed Status Toggle */}
-        <div className="flex items-center justify-between gap-2">
+        {/* Active vs Completed Status Toggle & Admin Publish Action */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="inline-flex items-center gap-1 p-1 bg-slate-100/90 border border-slate-200 rounded-xl">
             <button
               type="button"
@@ -484,6 +489,17 @@ export const HomeTab: React.FC = () => {
               <span>Completed ({completedEvents.length})</span>
             </button>
           </div>
+
+          {userHasAdminAccess && (
+            <button
+              type="button"
+              onClick={() => setIsPublishEventOpen(true)}
+              className="min-h-[40px] sm:min-h-[36px] px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer active:scale-95"
+            >
+              <CalendarPlus className="w-4 h-4 shrink-0" />
+              <span>Publish Event</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -583,6 +599,10 @@ export const HomeTab: React.FC = () => {
             setEditingEventModal(ev);
           }}
         />
+      )}
+
+      {isPublishEventOpen && userHasAdminAccess && (
+        <PublishEventModal onClose={() => setIsPublishEventOpen(false)} />
       )}
     </div>
   );

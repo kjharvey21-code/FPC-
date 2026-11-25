@@ -11,6 +11,25 @@ import { User, EventAssignment } from '../types';
  *    - user.projectHeadRoles matches or contains the event title or keyword
  *    - user.officerRole === 'Project Head' and assigned to this project
  */
+/**
+ * Checks whether a user holds an Admin / Executive Officer / SuperAdmin role
+ * granting access to club-wide administrative actions such as publishing events.
+ */
+export function hasAdminAccess(user: User | null): boolean {
+  if (!user) return false;
+
+  return Boolean(
+    user.isOfficer ||
+      user.role === 'SuperAdmin' ||
+      user.officerRole === 'SuperAdmin' ||
+      user.email === 'kjharvey21@gmail.com' ||
+      (user.officerRole &&
+        user.officerRole !== 'None' &&
+        user.officerRole !== 'Project Head') ||
+      user.role.toLowerCase().includes('admin')
+  );
+}
+
 export function canManageEvent(user: User | null, event: EventAssignment): boolean {
   if (!user) return false;
 
