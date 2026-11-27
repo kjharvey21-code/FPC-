@@ -127,6 +127,12 @@ export interface EventCrewSlot {
   notes?: string; // brief role instructions, expected gear, or participation level
 }
 
+export interface ContestAward {
+  id: string;
+  award: string;
+  pks: number;
+}
+
 export interface EventAssignment {
   id: string;
   title: string;
@@ -144,7 +150,9 @@ export interface EventAssignment {
   isContest?: boolean;
   contestDeadline?: string;
   contestPrize?: string;
+  contestAwards?: ContestAward[];
   submittedEntriesCount?: number;
+  allowPublicEntriesView?: boolean;
   eligibleCodes: string[];
   projectHeadId?: string; // Member ID of the designated Project Head
   projectHeadName?: string; // Display name of Project Head

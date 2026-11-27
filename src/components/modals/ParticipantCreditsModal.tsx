@@ -15,7 +15,9 @@ import {
   Check,
   AlertCircle,
   Clock,
+  ExternalLink,
 } from 'lucide-react';
+import { normalizeSafeHttpUrl } from '../../utils/urlUtils';
 
 interface ParticipantCreditsModalProps {
   event: EventAssignment;
@@ -404,6 +406,8 @@ export const ParticipantCreditsModal: React.FC<ParticipantCreditsModalProps> = (
                   const activeCodes = customParticipantCodes[member.id] || getParticipantDefaultCodes(member.id);
                   const memberCalc = calculatePksFromCodes(activeCodes);
                   const participantSlot = getParticipantCrewSlot(member.id);
+                  const memberSubmission = eventSubmissions.find((s) => s.memberId === member.id);
+                  const memberEntryLink = normalizeSafeHttpUrl(memberSubmission?.imageUrl);
 
                   return (
                     <div
@@ -463,6 +467,20 @@ export const ParticipantCreditsModal: React.FC<ParticipantCreditsModalProps> = (
                                   ? 'Contest Entrant'
                                   : 'Participant'}
                               </span>
+                              {memberSubmission && memberEntryLink && (
+                                <>
+                                  <span aria-hidden="true">·</span>
+                                  <a
+                                    href={memberEntryLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-semibold hover:underline"
+                                  >
+                                    <span>View Entry ({memberSubmission.title})</span>
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>

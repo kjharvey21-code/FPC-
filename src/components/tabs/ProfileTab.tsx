@@ -29,8 +29,14 @@ import {
 import { RequestMLogModal } from '../modals/RequestMLogModal';
 import { ProfilePhotoModal } from '../modals/ProfilePhotoModal';
 import { LeadershipTimeline } from '../profile/LeadershipTimeline';
+import { ContestEntryCard } from '../profile/ContestEntryCard';
 import { BirthdatePromptBanner } from '../BirthdatePromptBanner';
 import { formatBirthdateDisplay, getTodayIsoDate, isValidBirthdate } from '../../utils/dateUtils';
+import {
+  getLinkDomainLabel,
+  isDisplayableImageUrl,
+  normalizeSafeHttpUrl,
+} from '../../utils/urlUtils';
 
 export const ProfileTab: React.FC = () => {
   const {
@@ -40,6 +46,8 @@ export const ProfileTab: React.FC = () => {
     getMemberProgress,
     getMemberPillarBreakdown,
     mLogEntries,
+    contestSubmissions,
+    feedPosts,
     updateMemberProfile,
     showToast,
   } = useApp();
@@ -103,6 +111,18 @@ export const ProfileTab: React.FC = () => {
     if (activeLedgerFilter === 'all') return true;
     return entry.status === activeLedgerFilter;
   });
+
+  // User's Showcase & Contest Entries
+  const memberContestEntries = contestSubmissions.filter(
+    (sub) => sub.memberId === currentUser.id
+  );
+  const memberShowcasePosts = feedPosts.filter(
+    (p) =>
+      p.authorName.toLowerCase() === currentUser.fullName.toLowerCase() ||
+      p.authorName.toLowerCase() === currentUser.nickname.toLowerCase() ||
+      p.title.toLowerCase().includes(currentUser.fullName.toLowerCase()) ||
+      p.title.toLowerCase().includes(currentUser.nickname.toLowerCase())
+  );
 
   const pillarCards = [
     {
@@ -733,25 +753,129 @@ export const ProfileTab: React.FC = () => {
       {/* Leadership History & Stewardship Timeline (M.Log Aligned) */}
       <LeadershipTimeline member={currentUser} />
 
+      {/* Personal Creative Showcase & Contest Entries */}
+      <section className="bg-white border border-slate-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-xs space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <h2 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+              <span>Showcase &amp; Contest Entries</span>
+            </h2>
+            <p className="text-[10px] sm:text-[11px] text-slate-500">
+              Your submitted contest entry links and featured creative work visible on your public portfolio.
+            </p>
+          </div>
+          <span className="text-[11px] font-mono font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg tabular-nums shrink-0">
+            {memberContestEntries.length + memberShowcasePosts.length} items
+          </span>
+        </div>
+
+        {memberContestEntries.length === 0 && memberShowcasePosts.length === 0 ? (
+          <div className="text-center py-7 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-500 text-xs px-4">
+            No contest entries or showcase works yet. Submit an entry link on any open contest in the Hub to feature it here.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {memberContestEntries.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                  Contest Submissions ({memberContestEntries.length})
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+                  {memberContestEntries.map((sub) => (
+                    <ContestEntryCard key={sub.id} submission={sub} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {memberShowcasePosts.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                  Featured Feed Dispatches ({memberShowcasePosts.length})
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+                  {memberShowcasePosts.map((post) => (
+                    <div
+                      key={post.id}
+                      className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-xs"
+                    >
+                      {post.imageUrl && isDisplayableImageUrl(post.imageUrl) && (
+                        <div className="h-32 w-full bg-slate-100 overflow-hidden">
+                          <img
+                            src={post.imageUrl}
+                            alt={post.title}
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+                      )}
+                      <div className="p-3 space-y-1">
+                        <h4 className="text-xs font-bold text-slate-900 line-clamp-1">
+                          {post.title}
+                        </h4>
+                        <p className="text-[11px] text-slate-500 line-clamp-2">
+                          {post.content}
+                        </p>
+                        <div className="text-[10px] text-slate-400 font-mono pt-1">
+                          {post.publishedAt}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
       {/* Proof Lightbox Modal */}
       {selectedProofUrl && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
           onClick={() => setSelectedProofUrl(null)}
         >
-          <div className="relative max-w-3xl w-full flex flex-col items-center">
+          <div
+            className="relative max-w-3xl w-full flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
+              type="button"
               onClick={() => setSelectedProofUrl(null)}
-              className="absolute -top-12 right-0 p-2 text-slate-300 hover:text-white"
+              className="absolute -top-12 right-0 p-2 text-slate-300 hover:text-white cursor-pointer"
+              aria-label="Close proof preview"
             >
               <X className="w-6 h-6" />
             </button>
-            <img
-              src={selectedProofUrl}
-              alt="M.Log Proof"
-              className="max-h-[80vh] w-auto max-w-full rounded-2xl object-contain shadow-2xl"
-              referrerPolicy="no-referrer"
-            />
+            {isDisplayableImageUrl(selectedProofUrl) ? (
+              <img
+                src={selectedProofUrl}
+                alt="M.Log Proof"
+                className="max-h-[80vh] w-auto max-w-full rounded-2xl object-contain shadow-2xl"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-5 shadow-2xl space-y-3 text-center">
+                <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  External Entry Proof Link
+                </div>
+                <div className="text-sm font-mono font-semibold text-slate-800 break-all bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  {getLinkDomainLabel(selectedProofUrl)}
+                </div>
+                {normalizeSafeHttpUrl(selectedProofUrl) && (
+                  <a
+                    href={normalizeSafeHttpUrl(selectedProofUrl)!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-colors"
+                  >
+                    <span>Open Submitted Link</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

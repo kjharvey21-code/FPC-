@@ -20,6 +20,7 @@ import {
   Video,
 } from 'lucide-react';
 import { LeadershipTimeline } from '../profile/LeadershipTimeline';
+import { ContestEntryCard } from '../profile/ContestEntryCard';
 import { formatBirthdateDisplay } from '../../utils/dateUtils';
 
 interface MemberProfileModalProps {
@@ -376,36 +377,22 @@ export const MemberProfileModal: React.FC<MemberProfileModalProps> = ({
               </div>
 
               {/* Contest Submissions */}
-              {memberContestEntries.length > 0 && (
-                <div className="pt-3 border-t border-slate-100">
-                  <div className="text-xs font-bold text-slate-900 mb-2">
-                    Contest Submissions ({memberContestEntries.length})
+              <div className="pt-3 border-t border-slate-100">
+                <div className="text-xs font-bold text-slate-900 mb-2">
+                  Contest Submissions ({memberContestEntries.length})
+                </div>
+                {memberContestEntries.length === 0 ? (
+                  <div className="p-5 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center text-xs text-slate-500">
+                    No contest entry links submitted by this member yet.
                   </div>
+                ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {memberContestEntries.map((sub) => (
-                      <div
-                        key={sub.id}
-                        className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-xs"
-                      >
-                        <img
-                          src={sub.imageUrl}
-                          alt={sub.title}
-                          className="h-32 w-full object-cover"
-                          referrerPolicy="no-referrer"
-                        />
-                        <div className="p-3">
-                          <div className="text-xs font-bold text-slate-900 truncate">
-                            {sub.title}
-                          </div>
-                          <div className="text-[11px] text-slate-500 truncate">
-                            {sub.eventTitle}
-                          </div>
-                        </div>
-                      </div>
+                      <ContestEntryCard key={sub.id} submission={sub} />
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
 

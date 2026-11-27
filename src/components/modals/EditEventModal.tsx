@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { EventAssignment, EventType, EventCrewSlot } from '../../types';
+import { ContestAward, EventAssignment, EventType, EventCrewSlot } from '../../types';
 import { PILLAR_CODES, calculatePksFromCodes } from '../../data/pksFramework';
 import { getEventManagementBadge } from '../../utils/permissions';
 import {
@@ -8,6 +8,11 @@ import {
   CREW_PRESET_PACKAGES,
   generateCrewSlot,
 } from '../../data/crewTemplates';
+import {
+  formatContestPrizeSummary,
+  parseLegacyContestPrize,
+} from '../../utils/contestAwards';
+import { ContestAwardsBox } from '../events/ContestAwardsBox';
 import {
   X,
   Calendar,
@@ -52,7 +57,13 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
   const [bannerUrl, setBannerUrl] = useState(event.bannerUrl);
   const [projectHeadId, setProjectHeadId] = useState(event.projectHeadId || '');
   const [isContest, setIsContest] = useState(!!event.isContest);
-  const [contestPrize, setContestPrize] = useState(event.contestPrize || '');
+  const [contestAwards, setContestAwards] = useState<ContestAward[]>(() =>
+    event.contestAwards && event.contestAwards.length > 0
+      ? event.contestAwards
+      : parseLegacyContestPrize(event.contestPrize)
+  );
+  const [draftAward, setDraftAward] = useState('');
+  const [draftPks, setDraftPks] = useState('15');
   const [contestDeadline, setContestDeadline] = useState(event.contestDeadline || '');
   const [eligibleCodes, setEligibleCodes] = useState<string[]>(event.eligibleCodes || []);
   const [maxCrew, setMaxCrew] = useState<number>(event.maxCrew || 10);
@@ -162,6 +173,19 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
       new Set([...eligibleCodes, ...crewSlots.flatMap((s) => s.pksCodes)])
     );
 
+    const finalAwards: ContestAward[] = [
+      ...contestAwards.filter((a) => a.award.trim().length > 0),
+      ...(draftAward.trim()
+        ? [
+            {
+              id: `award_${Date.now()}_draft`,
+              award: draftAward.trim(),
+              pks: Math.max(0, parseInt(draftPks, 10) || 0),
+            },
+          ]
+        : []),
+    ];
+
     try {
       await updateEvent(event.id, {
         title: title.trim(),
@@ -175,7 +199,8 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
         projectHeadId: projectHeadId || '',
         projectHeadName: selectedHead ? selectedHead.fullName : '',
         isContest,
-        contestPrize: isContest ? contestPrize : '',
+        contestAwards: isContest ? finalAwards : [],
+        contestPrize: isContest ? formatContestPrizeSummary(finalAwards) : '',
         contestDeadline: isContest ? contestDeadline : '',
         eligibleCodes: allSlotCodes,
         crewSlots,
@@ -782,19 +807,17 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
             </label>
 
             {isContest && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                <div>
-                  <label className="block text-xs font-semibold text-purple-900 mb-1">
-                    Prize & Recognition Details
-                  </label>
-                  <input
-                    type="text"
-                    value={contestPrize}
-                    onChange={(e) => setContestPrize(e.target.value)}
-                    placeholder="1st Place: 40 PKS (R1) + Peak Pass"
-                    className="w-full px-3 py-2 bg-white border border-purple-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 shadow-xs"
-                  />
-                </div>
+              <div className="space-y-3 pt-2">
+                <ContestAwardsBox
+                  awards={contestAwards}
+                  onChange={setContestAwards}
+                  draftAward={draftAward}
+                  draftPks={draftPks}
+                  onDraftChange={(nextAward, nextPks) => {
+                    setDraftAward(nextAward);
+                    setDraftPks(nextPks);
+                  }}
+                />
                 <div>
                   <label className="block text-xs font-semibold text-purple-900 mb-1">
                     Submission Deadline

@@ -29,8 +29,9 @@ import {
   getNextRankProgress,
   RANK_TIERS,
 } from '../data/pksFramework';
-import { canManageEvent } from '../utils/permissions';
+import { canManageEvent, hasAdminAccess } from '../utils/permissions';
 import { getLeadershipPksCodeForRole, isOfficerRoleSyncedWithMLog } from '../utils/leadershipSync';
+import { normalizeSafeHttpUrl } from '../utils/urlUtils';
 import {
   db,
   auth,
@@ -163,6 +164,7 @@ interface AppContextType {
     awardWon?: string,
     awardPksCodes?: string[]
   ) => Promise<void>;
+  toggleContestPublicEntriesView: (eventId: string, allowPublic: boolean) => Promise<void>;
 
   // Feed
   feedPosts: FeedPost[];
@@ -643,6 +645,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               projectHeadName: data.projectHeadName,
               creditedMemberIds: data.creditedMemberIds || [],
               creditsApproved: data.creditsApproved !== undefined ? data.creditsApproved : false,
+              allowPublicEntriesView: Boolean(data.allowPublicEntriesView),
               crewSlots: data.crewSlots || [],
             } as EventAssignment);
           }
@@ -2131,6 +2134,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }) => {
     if (!currentUser) return;
 
+    const safeEntryUrl = normalizeSafeHttpUrl(submission.imageUrl);
+    if (!safeEntryUrl) {
+      showToast('Please enter a valid http:// or https:// entry link.', 'error');
+      return;
+    }
+
     const newSub: ContestSubmission = {
       id: `sub_${Date.now()}`,
       eventId: submission.eventId,
@@ -2138,9 +2147,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       memberId: currentUser.id,
       memberName: currentUser.fullName,
       memberAvatar: currentUser.avatarUrl,
-      title: submission.title,
-      caption: submission.caption,
-      imageUrl: submission.imageUrl,
+      title: submission.title.trim(),
+      caption: submission.caption.trim(),
+      imageUrl: safeEntryUrl,
       submittedAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
       status: 'pending',
     };
@@ -2178,8 +2187,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       codes: ['P5'],
       pillarPoints: breakdown,
       totalPoints: total,
-      remarks: `Submitted entry "${submission.title}". Eligible for P5 School Contest Participant score.`,
-      proofUrl: submission.imageUrl,
+      remarks: `Submitted entry "${submission.title.trim()}". Eligible for P5 School Contest Participant score.`,
+      proofUrl: safeEntryUrl,
       status: 'pending',
       submittedAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
     };
@@ -2261,6 +2270,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     showToast(`Submission status updated to ${status}.`, 'success');
+  };
+
+  const toggleContestPublicEntriesView = async (eventId: string, allowPublic: boolean) => {
+    if (!hasAdminAccess(currentUser)) {
+      showToast('Only administrators can change contest entry viewing permissions.', 'error');
+      return;
+    }
+
+    const path = `events/${eventId}`;
+    try {
+      await updateDoc(doc(db, 'events', eventId), {
+        allowPublicEntriesView: allowPublic,
+      });
+      setEvents((prev) =>
+        prev.map((item) =>
+          item.id === eventId ? { ...item, allowPublicEntriesView: allowPublic } : item
+        )
+      );
+      showToast(
+        allowPublic
+          ? 'Contest entries are now open for all members to view.'
+          : 'Contest entries are now restricted to administrators.',
+        'info'
+      );
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
   };
 
   // Feed Posts
@@ -2582,6 +2618,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         contestSubmissions,
         submitToContest,
         reviewSubmission,
+        toggleContestPublicEntriesView,
         feedPosts,
         createFeedPost,
         applaudPost,

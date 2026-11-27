@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { EventAssignment } from '../../types';
-import { canManageEvent, isEventProjectHead, getEventManagementBadge } from '../../utils/permissions';
+import { canManageEvent, isEventProjectHead, getEventManagementBadge, hasAdminAccess } from '../../utils/permissions';
 import { calculatePksFromCodes } from '../../data/pksFramework';
 import {
   X,
@@ -21,9 +21,12 @@ import {
   ChevronRight,
   Plus,
   UserPlus,
+  Eye,
+  Lock,
 } from 'lucide-react';
 import { EditEventModal } from './EditEventModal';
 import { ParticipantCreditsModal } from './ParticipantCreditsModal';
+import { ContestEntriesModal } from './ContestEntriesModal';
 
 interface EventDetailsModalProps {
   event: EventAssignment;
@@ -38,8 +41,11 @@ export const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
 }) => {
   const {
     currentUser,
+    events,
     allUsers,
+    contestSubmissions,
     toggleVolunteer,
+    toggleContestPublicEntriesView,
     volunteerForCrewRole,
     withdrawVolunteerCrewRole,
     assignMemberToCrewSlot,
@@ -47,26 +53,38 @@ export const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
     mLogEntries,
   } = useApp();
 
+  const liveEvent = events.find((e) => e.id === event.id) || event;
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCreditsModal, setShowCreditsModal] = useState(false);
+  const [showEntriesModal, setShowEntriesModal] = useState(false);
 
-  const isHead = isEventProjectHead(currentUser, event);
-  const crewSlots = event.crewSlots || [];
+  const isAdmin = hasAdminAccess(currentUser);
+  const isContestEvent = Boolean(liveEvent.isContest || liveEvent.type === 'contest');
+  const isPublicEntriesAllowed = Boolean(liveEvent.allowPublicEntriesView);
+  const canClickViewEntries = isAdmin || isPublicEntriesAllowed;
+  const contestEntriesCount = isContestEvent
+    ? contestSubmissions.filter((s) => s.eventId === liveEvent.id).length ||
+      liveEvent.submittedEntriesCount ||
+      0
+    : 0;
+
+  const isHead = isEventProjectHead(currentUser, liveEvent);
+  const crewSlots = liveEvent.crewSlots || [];
   const hasCrewSlots = crewSlots.length > 0;
 
-  const isAssigned = currentUser ? event.assignedCrewIds.includes(currentUser.id) : false;
+  const isAssigned = currentUser ? liveEvent.assignedCrewIds.includes(currentUser.id) : false;
   const isAssignedInSlot = currentUser ? crewSlots.some((s) => s.assignedMemberIds.includes(currentUser.id)) : false;
   const isUserAssigned = isAssigned || isAssignedInSlot;
 
-  const isVolunteered = currentUser ? event.volunteerCrewIds.includes(currentUser.id) : false;
+  const isVolunteered = currentUser ? liveEvent.volunteerCrewIds.includes(currentUser.id) : false;
   const isVolunteeredInSlot = currentUser ? crewSlots.some((s) => s.volunteerMemberIds.includes(currentUser.id)) : false;
   const isUserVolunteered = isVolunteered || isVolunteeredInSlot;
 
-  const assignedUsers = allUsers.filter((u) => event.assignedCrewIds.includes(u.id));
-  const volunteerUsers = allUsers.filter((u) => event.volunteerCrewIds.includes(u.id));
+  const assignedUsers = allUsers.filter((u) => liveEvent.assignedCrewIds.includes(u.id));
+  const volunteerUsers = allUsers.filter((u) => liveEvent.volunteerCrewIds.includes(u.id));
 
-  const hasManagementAccess = canManageEvent(currentUser, event);
-  const authBadge = getEventManagementBadge(currentUser, event);
+  const hasManagementAccess = canManageEvent(currentUser, liveEvent);
+  const authBadge = getEventManagementBadge(currentUser, liveEvent);
 
   // Check if member received verified credit for this event
   const isMemberCredited = (memberId: string) => {
@@ -258,19 +276,101 @@ export const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
               {event.description}
             </div>
 
-            {/* Contest info */}
-            {event.isContest && event.contestPrize && (
-              <div className="p-3.5 rounded-2xl bg-purple-50/80 border border-purple-200 text-xs">
-                <div className="text-purple-900 font-semibold mb-1 flex items-center gap-1.5">
-                  <Award className="w-4 h-4 text-purple-600" />
-                  <span>Contest Honor & Prize:</span>
-                </div>
-                <div className="text-slate-800 font-medium">{event.contestPrize}</div>
-                {event.contestDeadline && (
-                  <div className="text-[11px] text-slate-500 mt-1">
-                    Deadline: {event.contestDeadline}
+            {/* Contest info & Entry Gallery Controls */}
+            {isContestEvent && (
+              <div className="p-3.5 rounded-2xl bg-purple-50/80 border border-purple-200 text-xs space-y-3">
+                {(liveEvent.contestPrize || (liveEvent.contestAwards && liveEvent.contestAwards.length > 0)) && (
+                  <div>
+                    <div className="text-purple-900 font-semibold mb-1.5 flex items-center gap-1.5">
+                      <Award className="w-4 h-4 text-purple-600" />
+                      <span>Contest Honor &amp; Prize:</span>
+                    </div>
+                    {liveEvent.contestAwards && liveEvent.contestAwards.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {liveEvent.contestAwards.map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex items-center justify-between gap-3 py-1 border-b border-purple-200/60 last:border-b-0"
+                          >
+                            <span className="text-slate-800 font-medium">{item.award}</span>
+                            <span className="font-mono tabular-nums font-bold text-purple-800 shrink-0">
+                              +{item.pks} PKS
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-slate-800 font-medium">{liveEvent.contestPrize}</div>
+                    )}
+                    {liveEvent.contestDeadline && (
+                      <div className="text-[11px] text-slate-500 mt-1.5">
+                        Deadline: {liveEvent.contestDeadline}
+                      </div>
+                    )}
                   </div>
                 )}
+
+                <div className="pt-2 border-t border-purple-200/70 flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-[11px] text-purple-900 font-medium">
+                    {isPublicEntriesAllowed
+                      ? `All ${contestEntriesCount} submitted entries are open for members to view.`
+                      : `Submitted entries (${contestEntriesCount}) are restricted to administrators.`}
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      disabled={!canClickViewEntries}
+                      onClick={() => {
+                        if (!canClickViewEntries) return;
+                        setShowEntriesModal(true);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                        canClickViewEntries
+                          ? 'bg-slate-900 hover:bg-slate-800 text-white border-slate-900 cursor-pointer shadow-xs'
+                          : 'bg-white/80 text-slate-400 border-slate-200 cursor-not-allowed opacity-75'
+                      }`}
+                      title={
+                        canClickViewEntries
+                          ? 'View all submitted contest entries'
+                          : 'Only administrators can view entries until shared'
+                      }
+                    >
+                      {canClickViewEntries ? (
+                        <Eye className="w-3.5 h-3.5 shrink-0" />
+                      ) : (
+                        <Lock className="w-3.5 h-3.5 shrink-0" />
+                      )}
+                      <span className="tabular-nums">View All Entries ({contestEntriesCount})</span>
+                    </button>
+
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          toggleContestPublicEntriesView(liveEvent.id, !isPublicEntriesAllowed)
+                        }
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
+                          isPublicEntriesAllowed
+                            ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                            : 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-600 shadow-xs'
+                        }`}
+                      >
+                        {isPublicEntriesAllowed ? (
+                          <>
+                            <Lock className="w-3.5 h-3.5 shrink-0" />
+                            <span>Restrict to Admins</span>
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="w-3.5 h-3.5 shrink-0" />
+                            <span>Allow Others to View</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -521,10 +621,10 @@ export const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
             </div>
 
             <div className="flex items-center gap-2.5 flex-wrap">
-              {!event.isContest && !hasCrewSlots && !isHead && event.status !== 'completed' && (
+              {!isContestEvent && !hasCrewSlots && !isHead && liveEvent.status !== 'completed' && (
                 <button
                   type="button"
-                  onClick={() => toggleVolunteer(event.id)}
+                  onClick={() => toggleVolunteer(liveEvent.id)}
                   className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs ${
                     isUserVolunteered
                       ? 'bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700'
@@ -547,7 +647,7 @@ export const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                 </button>
               )}
 
-              {event.isContest && onOpenSubmitEntry && (
+              {isContestEvent && onOpenSubmitEntry && (
                 <button
                   type="button"
                   onClick={() => {
@@ -568,7 +668,7 @@ export const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
       {/* Nested Modals */}
       {showEditModal && (
         <EditEventModal
-          event={event}
+          event={liveEvent}
           onClose={() => setShowEditModal(false)}
           onOpenCredits={() => setShowCreditsModal(true)}
         />
@@ -576,9 +676,16 @@ export const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
 
       {showCreditsModal && (
         <ParticipantCreditsModal
-          event={event}
+          event={liveEvent}
           onClose={() => setShowCreditsModal(false)}
           onOpenEditEvent={() => setShowEditModal(true)}
+        />
+      )}
+
+      {showEntriesModal && (
+        <ContestEntriesModal
+          event={liveEvent}
+          onClose={() => setShowEntriesModal(false)}
         />
       )}
     </>

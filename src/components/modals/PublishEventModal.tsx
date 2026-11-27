@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { EventCrewSlot, EventType } from '../../types';
+import { ContestAward, EventCrewSlot, EventType } from '../../types';
 import { PILLAR_CODES, calculatePksFromCodes } from '../../data/pksFramework';
 import {
   STANDARD_CREW_ROLES,
   CREW_PRESET_PACKAGES,
   generateCrewSlot,
 } from '../../data/crewTemplates';
+import {
+  createDefaultContestAwards,
+  formatContestPrizeSummary,
+} from '../../utils/contestAwards';
+import { ContestAwardsBox } from '../events/ContestAwardsBox';
 import {
   X,
   CalendarPlus,
@@ -55,7 +60,11 @@ export const PublishEventModal: React.FC<PublishEventModalProps> = ({ onClose })
   const [bannerUrl, setBannerUrl] = useState(BANNER_PRESETS[0].url);
   const [projectHeadId, setProjectHeadId] = useState('');
   const [isContest, setIsContest] = useState(false);
-  const [contestPrize, setContestPrize] = useState('1st: +40 PKS (R1) · 2nd: +25 PKS');
+  const [contestAwards, setContestAwards] = useState<ContestAward[]>(() =>
+    createDefaultContestAwards()
+  );
+  const [draftAward, setDraftAward] = useState('');
+  const [draftPks, setDraftPks] = useState('15');
   const [contestDeadline, setContestDeadline] = useState('');
   const [eligibleCodes] = useState<string[]>(['C2', 'P4', 'B2', 'S2']);
   const [crewSlots, setCrewSlots] = useState<EventCrewSlot[]>(() => [
@@ -103,6 +112,19 @@ export const PublishEventModal: React.FC<PublishEventModalProps> = ({ onClose })
       new Set([...eligibleCodes, ...crewSlots.flatMap((s) => s.pksCodes)])
     );
 
+    const finalAwards: ContestAward[] = [
+      ...contestAwards.filter((a) => a.award.trim().length > 0),
+      ...(draftAward.trim()
+        ? [
+            {
+              id: `award_${Date.now()}_draft`,
+              award: draftAward.trim(),
+              pks: Math.max(0, parseInt(draftPks, 10) || 0),
+            },
+          ]
+        : []),
+    ];
+
     try {
       await createEvent({
         title: title.trim(),
@@ -116,7 +138,8 @@ export const PublishEventModal: React.FC<PublishEventModalProps> = ({ onClose })
         projectHeadId: projectHeadId || undefined,
         projectHeadName: selectedHead ? selectedHead.fullName : undefined,
         isContest,
-        contestPrize: isContest ? contestPrize.trim() : undefined,
+        contestAwards: isContest ? finalAwards : undefined,
+        contestPrize: isContest ? formatContestPrizeSummary(finalAwards) : undefined,
         contestDeadline: isContest ? (contestDeadline.trim() || date) : undefined,
         eligibleCodes: allSlotCodes,
         crewSlots,
@@ -328,18 +351,17 @@ export const PublishEventModal: React.FC<PublishEventModalProps> = ({ onClose })
             </label>
 
             {isContest && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Prize & Recognition Details
-                  </label>
-                  <input
-                    type="text"
-                    value={contestPrize}
-                    onChange={(e) => setContestPrize(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
+              <div className="space-y-3 pt-1">
+                <ContestAwardsBox
+                  awards={contestAwards}
+                  onChange={setContestAwards}
+                  draftAward={draftAward}
+                  draftPks={draftPks}
+                  onDraftChange={(nextAward, nextPks) => {
+                    setDraftAward(nextAward);
+                    setDraftPks(nextPks);
+                  }}
+                />
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Submission Deadline

@@ -10,6 +10,11 @@ import {
 import { UserRole, OfficerRole, EventType, MLogEntry, User, PendingRegistration } from '../../types';
 import { compressImageFile } from '../../utils/imageUtils';
 import {
+  getLinkDomainLabel,
+  isDisplayableImageUrl,
+  normalizeSafeHttpUrl,
+} from '../../utils/urlUtils';
+import {
   ShieldAlert,
   CheckCircle2,
   XCircle,
@@ -55,7 +60,7 @@ import { EditMemberModal } from '../modals/EditMemberModal';
 import { EditEventModal } from '../modals/EditEventModal';
 import { ParticipantCreditsModal } from '../modals/ParticipantCreditsModal';
 import { ApproveMemberModal } from '../modals/ApproveMemberModal';
-import { EventAssignment, EventCrewSlot } from '../../types';
+import { EventAssignment, EventCrewSlot, ContestAward } from '../../types';
 import { canManageEvent, isEventProjectHead, getEventManagementBadge } from '../../utils/permissions';
 import {
   STANDARD_CREW_ROLES,
@@ -64,6 +69,11 @@ import {
 } from '../../data/crewTemplates';
 import { isOfficerRoleSyncedWithMLog, getLeadershipPksCodeForRole } from '../../utils/leadershipSync';
 import { formatBirthdateDisplay } from '../../utils/dateUtils';
+import {
+  createDefaultContestAwards,
+  formatContestPrizeSummary,
+} from '../../utils/contestAwards';
+import { ContestAwardsBox } from '../events/ContestAwardsBox';
 
 export const AdminTab: React.FC = () => {
   const {
@@ -136,7 +146,11 @@ export const AdminTab: React.FC = () => {
   const [eventDescription, setEventDescription] = useState('');
   const [eventBanner, setEventBanner] = useState('/src/assets/images/fpc_workshop_cover_1792558823447.jpg');
   const [isContest, setIsContest] = useState(false);
-  const [contestPrize, setContestPrize] = useState('1st: +40 PKS (R1) · 2nd: +25 PKS');
+  const [contestAwards, setContestAwards] = useState<ContestAward[]>(() =>
+    createDefaultContestAwards()
+  );
+  const [draftContestAward, setDraftContestAward] = useState('');
+  const [draftContestPks, setDraftContestPks] = useState('15');
   const [eligibleCodes, setEligibleCodes] = useState<string[]>(['C2', 'P4', 'B2', 'S2']);
   const [eventProjectHeadId, setEventProjectHeadId] = useState<string>('');
   const [eventSubView, setEventSubView] = useState<'roster' | 'create'>('roster');
@@ -276,6 +290,19 @@ export const AdminTab: React.FC = () => {
       new Set([...eligibleCodes, ...eventCrewSlots.flatMap((s) => s.pksCodes)])
     );
 
+    const finalAwards: ContestAward[] = [
+      ...contestAwards.filter((a) => a.award.trim().length > 0),
+      ...(draftContestAward.trim()
+        ? [
+            {
+              id: `award_${Date.now()}_draft`,
+              award: draftContestAward.trim(),
+              pks: Math.max(0, parseInt(draftContestPks, 10) || 0),
+            },
+          ]
+        : []),
+    ];
+
     try {
       await createEvent({
         title: eventTitle.trim(),
@@ -289,7 +316,8 @@ export const AdminTab: React.FC = () => {
         projectHeadId: eventProjectHeadId || undefined,
         projectHeadName: selectedHead ? selectedHead.fullName : undefined,
         isContest,
-        contestPrize: isContest ? contestPrize : undefined,
+        contestAwards: isContest ? finalAwards : undefined,
+        contestPrize: isContest ? formatContestPrizeSummary(finalAwards) : undefined,
         contestDeadline: isContest ? eventDate : undefined,
         eligibleCodes: allSlotCodes,
         crewSlots: eventCrewSlots,
@@ -298,6 +326,9 @@ export const AdminTab: React.FC = () => {
       setEventTitle('');
       setEventDescription('');
       setEventProjectHeadId('');
+      setContestAwards(createDefaultContestAwards());
+      setDraftContestAward('');
+      setDraftContestPks('15');
       setEventSubView('roster');
     } catch {
       // Error toast and logging already handled by createEvent
@@ -1302,14 +1333,15 @@ export const AdminTab: React.FC = () => {
 
                 {isContest && (
                   <div className="pt-2">
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Prize & Recognition Details
-                    </label>
-                    <input
-                      type="text"
-                      value={contestPrize}
-                      onChange={(e) => setContestPrize(e.target.value)}
-                      className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:border-indigo-500"
+                    <ContestAwardsBox
+                      awards={contestAwards}
+                      onChange={setContestAwards}
+                      draftAward={draftContestAward}
+                      draftPks={draftContestPks}
+                      onDraftChange={(nextAward, nextPks) => {
+                        setDraftContestAward(nextAward);
+                        setDraftContestPks(nextPks);
+                      }}
                     />
                   </div>
                 )}
@@ -2869,13 +2901,38 @@ export const AdminTab: React.FC = () => {
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
           onClick={() => setInspectProofUrl(null)}
         >
-          <div className="relative max-w-3xl w-full flex flex-col items-center">
-            <img
-              src={inspectProofUrl}
-              alt="Verification Proof"
-              className="max-h-[80vh] w-auto max-w-full rounded-2xl object-contain shadow-2xl"
-              referrerPolicy="no-referrer"
-            />
+          <div
+            className="relative max-w-3xl w-full flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {isDisplayableImageUrl(inspectProofUrl) ? (
+              <img
+                src={inspectProofUrl}
+                alt="Verification Proof"
+                className="max-h-[80vh] w-auto max-w-full rounded-2xl object-contain shadow-2xl"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-5 shadow-2xl space-y-3 text-center">
+                <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  External Verification Link
+                </div>
+                <div className="text-sm font-mono font-semibold text-slate-800 break-all bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  {getLinkDomainLabel(inspectProofUrl)}
+                </div>
+                {normalizeSafeHttpUrl(inspectProofUrl) && (
+                  <a
+                    href={normalizeSafeHttpUrl(inspectProofUrl)!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-colors"
+                  >
+                    <span>Open Verification Link</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
